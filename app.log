@@ -1,0 +1,13 @@
+2024-07-06T19:33:06.181Z [info]: Server running on port 3000
+2024-07-06T19:33:50.829Z [info]: Server running on port 3000
+2024-07-06T19:33:50.945Z [info]: Connected to MongoDB
+2024-07-06T19:34:22.881Z [info]: Server running on port 5000
+2024-07-06T19:34:22.914Z [info]: Connected to MongoDB
+2024-07-06T19:43:55.152Z [info]: Server running on port 5000
+2024-07-06T19:43:55.194Z [error]: Error connecting to MongoDB: Protocol and host list are required in "mongodb+srv://piccolo:Hummer64@@cluster0.leucuxi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+2024-07-06T19:50:19.529Z [info]: Server running on port 5000
+2024-07-06T19:50:21.350Z [info]: Connected to MongoDB
+2024-07-06T19:52:59.232Z [info]: Server running on port 5000
+2024-07-06T19:53:01.486Z [info]: Connected to MongoDB
+2024-07-06T19:53:59.841Z [info]: Server running on port 5000
+2024-07-06T19:54:01.524Z [info]: Connected to MongoDB
