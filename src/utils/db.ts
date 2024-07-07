@@ -50,7 +50,7 @@ class MongoClient {
     try {
       await this.userModel.create(user);
     } catch (error) {
-      logger.error("Error inserting user: ", error);
+      logger.error("Error creating user: ", error);
     }
   }
 
@@ -58,7 +58,7 @@ class MongoClient {
     try {
       await this.chatModel.create(chat);
     } catch (error) {
-      logger.error("Error inserting chat: ", error);
+      logger.error("Error creating chat: ", error);
     }
   }
 
