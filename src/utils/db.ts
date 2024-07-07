@@ -3,7 +3,7 @@ import { IChat } from "../models/chatModel";
 import { IUser } from "../models/userModel";
 import UserModel from "../models/userModel";
 import ChatModel from "../models/chatModel";
-import { logger } from "./logger";
+import { logger } from "../utils/logger";
 
 class MongoClient {
   private static instance: MongoClient;
