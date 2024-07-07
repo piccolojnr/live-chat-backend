@@ -3,7 +3,7 @@ import { IChat } from "../models/chatModel";
 import { IUser } from "../models/userModel";
 import UserModel from "../models/userModel";
 import ChatModel from "../models/chatModel";
-
+import { logger } from "./logger";
 
 class MongoClient {
   private static instance: MongoClient;
@@ -26,7 +26,7 @@ class MongoClient {
     try {
       await this.client.connect(uri);
     } catch (error) {
-      console.error("MongoDB connection error: ", error);
+      logger.error("MongoDB connection error: ", error);
     }
   }
 
@@ -34,7 +34,7 @@ class MongoClient {
     try {
       await this.client.disconnect();
     } catch (error) {
-      console.error("MongoDB disconnection error: ", error);
+      logger.error("MongoDB disconnection error: ", error);
     }
   }
 
@@ -50,7 +50,7 @@ class MongoClient {
     try {
       await this.userModel.create(user);
     } catch (error) {
-      console.error("Error inserting user: ", error);
+      logger.error("Error inserting user: ", error);
     }
   }
 
@@ -58,7 +58,7 @@ class MongoClient {
     try {
       await this.chatModel.create(chat);
     } catch (error) {
-      console.error("Error inserting chat: ", error);
+      logger.error("Error inserting chat: ", error);
     }
   }
 
@@ -66,7 +66,7 @@ class MongoClient {
     try {
       return await this.userModel.findOne(query).exec();
     } catch (error) {
-      console.error("Error finding user: ", error);
+      logger.error("Error finding user: ", error);
       return null;
     }
   }
@@ -75,7 +75,7 @@ class MongoClient {
     try {
       return await this.chatModel.findOne(query).exec();
     } catch (error) {
-      console.error("Error finding chat: ", error);
+      logger.error("Error finding chat: ", error);
       return null;
     }
   }
