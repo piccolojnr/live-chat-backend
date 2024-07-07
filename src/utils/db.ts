@@ -1,15 +1,14 @@
 import mongoose, { Model, Mongoose } from "mongoose";
 import { IChat } from "../models/chatModel";
 import { IUser } from "../models/userModel";
-import UserModel from "../models/userModel";
-import ChatModel from "../models/chatModel";
-import { logger } from "../utils/logger";
+import User from "../models/userModel";
+import Chat from "../models/chatModel";
 
 class MongoClient {
   private static instance: MongoClient;
   private client: Mongoose;
-  private userModel: Model<IUser> = UserModel;
-  private chatModel: Model<IChat> = ChatModel;
+  private userModel: Model<IUser> = User;
+  private chatModel: Model<IChat> = Chat;
 
   private constructor() {
     this.client = mongoose;
@@ -23,19 +22,11 @@ class MongoClient {
   }
 
   public async connect(uri: string): Promise<void> {
-    try {
-      await this.client.connect(uri);
-    } catch (error) {
-      logger.error("MongoDB connection error: ", error);
-    }
+    await this.client.connect(uri);
   }
 
   public async disconnect(): Promise<void> {
-    try {
-      await this.client.disconnect();
-    } catch (error) {
-      logger.error("MongoDB disconnection error: ", error);
-    }
+    await this.client.disconnect();
   }
 
   public isAlive(): boolean {
@@ -47,37 +38,19 @@ class MongoClient {
   }
 
   public async createUser(user: IUser): Promise<void> {
-    try {
-      await this.userModel.create(user);
-    } catch (error) {
-      logger.error("Error creating user: ", error);
-    }
+    await this.userModel.create(user);
   }
 
   public async createChat(chat: IChat): Promise<void> {
-    try {
-      await this.chatModel.create(chat);
-    } catch (error) {
-      logger.error("Error creating chat: ", error);
-    }
+    await this.chatModel.create(chat);
   }
 
   public async findUser(query: any): Promise<IUser | null> {
-    try {
-      return await this.userModel.findOne(query).exec();
-    } catch (error) {
-      logger.error("Error finding user: ", error);
-      return null;
-    }
+    return await this.userModel.findOne(query).exec();
   }
 
   public async findChat(query: any): Promise<IChat | null> {
-    try {
-      return await this.chatModel.findOne(query).exec();
-    } catch (error) {
-      logger.error("Error finding chat: ", error);
-      return null;
-    }
+    return await this.chatModel.findOne(query).exec();
   }
 }
 
