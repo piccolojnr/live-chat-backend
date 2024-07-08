@@ -52,6 +52,14 @@ class MongoClient {
   public async findChat(query: any): Promise<IChat | null> {
     return await this.chatModel.findOne(query).exec();
   }
+
+  public async findChats(query: any): Promise<IChat[] | null> {
+    return await this.chatModel.find(query).exec();
+  }
+
+  public async updateChat(query: any, update: any): Promise<void> {
+    await this.chatModel.updateOne(query, update).exec();
+  }
 }
 
 export default MongoClient.getInstance();
