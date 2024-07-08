@@ -1,0 +1,391 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is the API documentation for the application.",
+        "version": "1.0.0",
+        "title": "Application API"
+    },
+    "host": "localhost:3000",
+    "basePath": "/api",
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Authentication related endpoints"
+        },
+        {
+            "name": "Chat",
+            "description": "Chat related endpoints"
+        },
+        {
+            "name": "User",
+            "description": "User related endpoints"
+        }
+    ],
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "paths": {
+        "/auth/connect": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User login",
+                "description": "Authenticate user and return token",
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "description": "Basic auth credentials",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful login",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "token": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/auth/auth": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Check user authentication",
+                "description": "Verify user token",
+                "responses": {
+                    "200": {
+                        "description": "User authenticated",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "userId": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token not found or invalid"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/auth/disconnect": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User logout",
+                "description": "Disconnect user and clear token",
+                "responses": {
+                    "204": {
+                        "description": "Successful logout"
+                    },
+                    "401": {
+                        "description": "Token not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/chat": {
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Create a new chat",
+                "description": "Create a new chat with participants and messages",
+                "parameters": [
+                    {
+                        "name": "chat",
+                        "in": "body",
+                        "description": "Chat object",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Chat"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Chat created successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "chatId": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid chat data"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get all chats for user",
+                "description": "Retrieve all chats for the authenticated user",
+                "responses": {
+                    "200": {
+                        "description": "Chats retrieved successfully",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Chat"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "User token not found or invalid"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/chat/{id}": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get a chat by ID",
+                "description": "Retrieve a chat by its ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Chat ID",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chat retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/Chat"
+                        }
+                    },
+                    "400": {
+                        "description": "Chat ID not found"
+                    },
+                    "404": {
+                        "description": "Chat not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Add a message to a chat",
+                "description": "Add a message to an existing chat",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Chat ID",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "message",
+                        "in": "body",
+                        "description": "Message object",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Message"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message added successfully"
+                    },
+                    "400": {
+                        "description": "Invalid message data"
+                    },
+                    "404": {
+                        "description": "Chat not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/user": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Create a new user",
+                "description": "Register a new user",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "body",
+                        "description": "User object",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "User created successfully"
+                    },
+                    "400": {
+                        "description": "Invalid user data"
+                    },
+                    "409": {
+                        "description": "User already exists"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/user/{username}": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get user by username",
+                "description": "Retrieve user details by username",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "description": "Username",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    },
+                    "401": {
+                        "description": "User token not found or invalid"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Chat": {
+            "type": "object",
+            "required": [
+                "participants",
+                "messages"
+            ],
+            "properties": {
+                "participants": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Message"
+                    }
+                }
+            }
+        },
+        "Message": {
+            "type": "object",
+            "required": [
+                "sender",
+                "message",
+                "timestamp"
+            ],
+            "properties": {
+                "sender": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "User": {
+            "type": "object",
+            "required": [
+                "username",
+                "password"
+            ],
+            "properties": {
+                "username": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profilePicture": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

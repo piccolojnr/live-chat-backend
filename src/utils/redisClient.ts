@@ -3,14 +3,19 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const host = process.env.REDIS_HOST || '';
+const port = process.env.REDIS_PORT || '6379';
+const password = process.env.REDIS_PASSWORD || '';
+
+
 class RedisClient {
     private client: Redis;
 
     constructor() {
         this.client = new Redis({
-            host: process.env.REDIS_HOST,
-            port: Number(process.env.REDIS_PORT),
-            password: process.env.REDIS_PASSWORD,
+            host,
+            port: parseInt(port),
+            password,
         });
     }
 
