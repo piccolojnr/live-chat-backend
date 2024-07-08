@@ -1,7 +1,9 @@
 import express from "express"
 import authRouter from "./authRoutes"
+import userRouter from "./userRoutes"
+import chatRouter from "./chatRoutes"
 import RedisClient from "../utils/redisClient"
-import mongoose from "mongoose"
+import mongoClient from "../utils/db"
 const redisClient = new RedisClient()
 
 const router = express.Router()
@@ -13,8 +15,8 @@ router.get("/", (req, res) => {
 })
 
 router.get("/status", async (req, res) => {
-    const status = redisClient.isAlive()
-    const dbStatus = mongoose.connection.readyState === 1
+    const status = redisClient.isAlive();
+    const dbStatus = mongoClient.isAlive();
 
     return res.json({
         redis: status,
@@ -22,7 +24,8 @@ router.get("/status", async (req, res) => {
     })
 })
 
-router.use("/auth", authRouter)
+router.use("/auth", authRouter);
+router.use("/user", userRouter);
+router.use("/chat", chatRouter);
 
-export default router
-
+export default router;
