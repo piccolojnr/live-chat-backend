@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { IChat } from './chatModel';
 
 export interface IUser extends Document {
     username: string;
@@ -6,6 +7,7 @@ export interface IUser extends Document {
     phone?: string;
     profilePicture?: string;
     bio?: string;
+    chats?: IChat[];
 }
 
 const UserSchema: Schema = new Schema({
@@ -13,7 +15,8 @@ const UserSchema: Schema = new Schema({
     password: { type: String, required: true },
     phone: { type: String },
     profilePicture: { type: String },
-    bio: { type: String }
+    bio: { type: String },
+    chats: [{ type: Schema.Types.ObjectId, ref: 'Chat' }]
 });
 
 export default mongoose.model<IUser>('User', UserSchema);

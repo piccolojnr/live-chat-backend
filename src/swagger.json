@@ -5,7 +5,7 @@
         "version": "1.0.0",
         "title": "Application API"
     },
-    "host": "localhost:3000",
+    "host": "localhost:5000",
     "basePath": "/api",
     "tags": [
         {
@@ -25,7 +25,50 @@
         "http",
         "https"
     ],
+    "components": {
+        "securitySchemes": {
+            "basicAuth": {
+                "type": "http",
+                "scheme": "basic"
+            }
+        }
+    },
     "paths": {
+        "/": {
+            "get": {
+                "summary": "Get API status",
+                "description": "Check if the API is running",
+                "responses": {
+                    "200": {
+                        "description": "API is running"
+                    }
+                }
+            }
+        },
+        "/status": {
+            "get": {
+                "summary": "Get API status",
+                "description": "Check status of the API",
+                "responses": {
+                    "200": {
+                        "description": "API is running",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "redis": {
+                                    "type": "string",
+                                    "description": "Redis status"
+                                },
+                                "db": {
+                                    "type": "string",
+                                    "description": "MongoDB status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/connect": {
             "post": {
                 "tags": [
@@ -66,7 +109,7 @@
                 }
             }
         },
-        "/auth/auth": {
+        "/auth": {
             "get": {
                 "tags": [
                     "Auth"
@@ -158,6 +201,15 @@
                 ],
                 "summary": "Get all chats for user",
                 "description": "Retrieve all chats for the authenticated user",
+                "parameters": [
+                    {
+                        "name": "Cookie",
+                        "in": "header",
+                        "description": "Session cookie",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Chats retrieved successfully",
@@ -218,6 +270,13 @@
                 "summary": "Add a message to a chat",
                 "description": "Add a message to an existing chat",
                 "parameters": [
+                    {
+                        "name": "Cookie",
+                        "in": "header",
+                        "description": "Session cookie",
+                        "required": true,
+                        "type": "string"
+                    },
                     {
                         "name": "id",
                         "in": "path",
@@ -283,9 +342,64 @@
                         "description": "Internal server error"
                     }
                 }
+            },
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get all users",
+                "description": "Retrieve all users",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "description": "Query string",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Users retrieved successfully",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/User"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "User token not found or invalid"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
             }
         },
-        "/user/{username}": {
+        "/user/me": {
+            "get": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get current user",
+                "description": "Retrieve details of the authenticated user",
+                "responses": {
+                    "200": {
+                        "description": "User retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    },
+                    "401": {
+                        "description": "User token not found or invalid"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/user/{username}/users": {
             "get": {
                 "tags": [
                     "User"
@@ -370,6 +484,9 @@
                 "password"
             ],
             "properties": {
+                "id": {
+                    "type": "string"
+                },
                 "username": {
                     "type": "string"
                 },

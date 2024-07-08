@@ -106,6 +106,23 @@ class AuthController {
         logger.info('User disconnected');
         return res.status(204).send();
     }
+
+    static async checkAuthMiddleware(req: Request, res: Response, next: any) {
+        const token = req.cookies.token;
+        if (!token) {
+            logger.error('Token not found');
+            return res.status(401).json({ error: 'Token not found' });
+        }
+
+        try {
+            const userId = await AuthController.checkAuth(token);
+            res.locals.userId = userId;
+            next();
+        } catch (error: any) {
+            logger.error(error.message);
+            return res.status(500).json({ error: error.message });
+        }
+    }
 }
 
 export default AuthController;

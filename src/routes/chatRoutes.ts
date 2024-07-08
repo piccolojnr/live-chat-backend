@@ -4,9 +4,9 @@ import ChatController from "../controllers/chatController";
 
 const router = Router();
 
-router.post("/chat", ChatController.createChat);
-router.get("/chat/:id", ChatController.getChat);
-router.get("/chat", ChatController.getChats);
-router.put("/chat/:id", ChatController.addMessage);
+router.post("", ChatController.createChat);
+router.get("/:id", ChatController.getChat);
+router.get("/", ChatController.getChats);
+router.put("/:id", ChatController.addMessage);
 
 export default router;

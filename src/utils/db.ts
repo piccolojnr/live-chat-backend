@@ -46,20 +46,36 @@ class MongoClient {
   }
 
   public async findUser(query: any): Promise<IUser | null> {
-    return await this.userModel.findOne(query).exec();
+    return await this.userModel.findOne(query)
+      .select("-password")
+      .exec();
   }
-
+  public async findUsers(query: any): Promise<IUser[] | null> {
+    return await this.userModel.find(query)
+      .select("-password")
+      .exec();
+  }
   public async findChat(query: any): Promise<IChat | null> {
-    return await this.chatModel.findOne(query).exec();
+    return await this.chatModel.findOne(query)
+      .populate("participants", "username")
+      .select("-messages")
+      .exec();
   }
 
   public async findChats(query: any): Promise<IChat[] | null> {
-    return await this.chatModel.find(query).exec();
+    return await this.chatModel.find(query)
+      .populate("participants", "username")
+      .select("-messages")
+      .exec()
   }
 
   public async updateChat(query: any, update: any): Promise<void> {
-    await this.chatModel.updateOne(query, update).exec();
+    await this.chatModel.updateOne(query, update)
+      .select("-messages")
+      .exec();
   }
+
+
 }
 
 export default MongoClient.getInstance();

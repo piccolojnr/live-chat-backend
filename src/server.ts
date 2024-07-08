@@ -25,4 +25,8 @@ const server = http.createServer(app);
 // });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+    logger.info(`Server running on port ${PORT}`)
+    logger.info(`Swagger available at http://localhost:${PORT}/swagger`);
+}
+);
