@@ -108,7 +108,7 @@ class ChatController {
     }
   }
 
-  static async addMessage(req: Request, res: Response) {
+  static async updateChat(req: Request, res: Response) {
     try {
       const chatId = req.params.id;
       if (!chatId) {
@@ -116,30 +116,33 @@ class ChatController {
         return res.status(400).json({ error: 'Chat ID not found' });
       }
 
-      const message: IMessage = req.body;
-      if (!message.sender || !message.message) {
-        logger.error('Invalid message');
-        return res.status(400).json({ error: 'Invalid message' });
+      const chat: IChat = req.body;
+      if (!chat.participants || chat.participants.length < 2) {
+        logger.error('Invalid chat participants');
+        return res.status(400).json({ error: 'Invalid chat participants' });
       }
-
-      message.timestamp = new Date();
-      message.message = Buffer.from(message.message).toString('base64');
-
-      const chat = await mongoClient.findChat({ _id: chatId });
-      if (!chat) {
-        logger.error('Chat not found');
-        return res.status(404).json({ error: 'Chat not found' });
+      if (!chat.messages || chat.messages.length < 1) {
+        logger.error('Invalid chat messages');
+        return res.status(400).json({ error: 'Invalid chat messages' });
       }
-
-      chat.messages.push(message);
-      await mongoClient.updateChat(chatId, chat);
+      chat.messages.forEach((message: IMessage) => {
+        if (!message.sender || !message.message) {
+          logger.error('Invalid message');
+          return res.status(400).json({ error: 'Invalid message' });
+        }
+      });
+      chat.messages.forEach((message: IMessage) => {
+        message.timestamp = new Date();
+        message.message = Buffer.from(message.message).toString('base64');
+      });
 
       await redisClient.set(`chat_${chatId}`, JSON.stringify(chat), 60 * 60 * 24);
-      logger.info('Message added successfully in Redis');
+      logger.info('Chat updated successfully in Redis');
 
-      res.status(200).json('Message added successfully');
+      await mongoClient.updateChat({ _id: chatId }, chat);
+      res.status(200).json('Chat updated successfully');
     } catch (error: any) {
-      logger.error(`Error adding message: ${error.message}`);
+      logger.error(`Error updating chat: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });
     }
   }
