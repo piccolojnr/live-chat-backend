@@ -100,14 +100,14 @@ class ChatController {
         return res.status(401).json({ error: 'User token not found in Redis' });
       }
 
-      const chachedChats: IChat[] = JSON.parse(await redisClient.get(`chats_${userId}`) || '[]');
-      if (chachedChats.length > 0) {
-        chachedChats.forEach((chat: IChat) => {
+      const cachedChats: IChat[] = JSON.parse(await redisClient.get(`chats_${userId}`) || '[]');
+      if (cachedChats.length > 0) {
+        cachedChats.forEach((chat: IChat) => {
           chat.messages.forEach((message: IMessage) => {
             message.message = Buffer.from(message.message, 'base64').toString('ascii');
           });
         });
-        return res.status(200).json(chachedChats);
+        return res.status(200).json(cachedChats);
       }
 
       const chats = await mongoClient.findChats({ participants: userId });
