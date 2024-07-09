@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
-import jwt from 'jsonwebtoken';
+import AuthController from './authController';
 import { IChat, IMessage } from '../models/chatModel';
 import mongoClient from '../utils/db';
 import RedisClient from '../utils/redisClient';
@@ -86,20 +86,7 @@ class ChatController {
         return res.status(401).json({ error: 'User token not found' });
       }
 
-      let decodedToken: any;
-      try {
-        decodedToken = jwt.verify(token, process.env.JWT_SECRET!);
-      } catch (error) {
-        logger.error('Invalid token');
-        return res.status(401).json({ error: 'Invalid token' });
-      }
-
-      const userId = decodedToken.id;
-      if (!userId) {
-        logger.error('User token not found in Redis');
-        return res.status(401).json({ error: 'User token not found in Redis' });
-      }
-
+      const userId = await AuthController.checkAuth(token);
       const chachedChats: IChat[] = JSON.parse(await redisClient.get(`chats_${userId}`) || '[]');
       if (chachedChats.length > 0) {
         chachedChats.forEach((chat: IChat) => {
@@ -114,7 +101,10 @@ class ChatController {
       res.status(200).json(chats);
     } catch (error: any) {
       logger.error(`Error retrieving chats: ${error.message}`);
-      res.status(500).json({ error: 'Internal Server Error' });
+      if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
+        return res.status(401).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Internal Server Error'});
     }
   }
 
@@ -151,6 +141,43 @@ class ChatController {
     } catch (error: any) {
       logger.error(`Error adding message: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async deleteChat(req: Request, res: Response) {
+    try {
+      const chatId = req.params.id;
+      if (!chatId) {
+        logger.error('Chat ID not found');
+        return res.status(400).json({ error: 'Chat ID not found' });
+      }
+
+      await mongoClient.deleteChat({ _id: chatId });
+      await redisClient.del(`chat_${chatId}`);
+      res.status(200).json('Chat deleted successfully');
+    } catch (error: any) {
+      logger.error(`Error deleting chat: ${error.message}`);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async deleteChats(req: Request, res: Response) {
+    try {
+      const token = req.cookies.token;
+      if (!token) {
+        logger.error('User token not found');
+        return res.status(401).json({ error: 'User token not found' });
+      }
+
+      const userId = await AuthController.checkAuth(token);
+      await mongoClient.deleteChats({ participants: userId });
+      res.status(200).json('Chats deleted successfully');
+    } catch (error: any) {
+      logger.error(`Error deleting chats: ${error.message}`);
+      if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
+        return res.status(401).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Internal Server Error'});
     }
   }
 }

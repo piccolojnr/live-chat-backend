@@ -1,12 +1,10 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { IUser } from '../models/userModel';
 import mongoClient from '../utils/db';
-import RedisClient from '../utils/redisClient';
 import { logger } from '../utils/logger';
-
-const redisClient = new RedisClient();
+import AuthController from './authController';
+import ChatController from './chatController';
 
 
 class UserController {
@@ -43,20 +41,7 @@ class UserController {
         return res.status(401).json({ error: 'User token not found' });
       }
 
-      let decodedToken: any;
-      try {
-        decodedToken = jwt.verify(token, process.env.JWT_SECRET!);
-      } catch (error) {
-        logger.error('Invalid token');
-        return res.status(401).json({ error: 'Invalid token' });
-      }
-
-      const userId = await redisClient.get(`auth_${token}`);
-      if (!userId) {
-        logger.error('User token not found in Redis');
-        return res.status(401).json({ error: 'User token not found in Redis' });
-      }
-
+      const userId = await AuthController.checkAuth(token);
       const user: IUser | null = await mongoClient.findUser({ _id: userId });
       if (!user) {
         logger.error('User not found');
@@ -65,6 +50,70 @@ class UserController {
       res.status(200).json(user);
     } catch (error: any) {
       logger.error(`Error retrieving user: ${error.message}`);
+      if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
+        return res.status(401).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Internal Server Error'});
+    }
+  }
+
+  static async getUsers(req: Request, res: Response) {
+    try {
+      const users = await mongoClient.findUsers({});
+      res.status(200).json(users);
+    } catch (error: any) {
+      logger.error(`Error retrieving users: ${error.message}`);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async updateUser(req: Request, res: Response) {
+    try {
+      const token = req.cookies.token;
+      if (!token) {
+        logger.error('User token not found');
+        return res.status(401).json({ error: 'User token not found' });
+      }
+
+      const userId = await AuthController.checkAuth(token);
+      const user: IUser = req.body;
+      if (!user.username || !user.password) {
+        logger.error('Username or password not found');
+        return res.status(400).json({ error: 'Username or password not found' });
+      }
+
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+      user.password = hashedPassword;
+
+      await mongoClient.updateUser(userId, user);
+      res.status(200).json('User updated successfully');
+    } catch (error: any) {
+      logger.error(`Error updating user: ${error.message}`);
+      if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
+        return res.status(401).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Internal Server Error'});
+    }
+  }
+
+  static async deleteUser(req: Request, res: Response) {
+    try {
+      const token = req.cookies.token;
+      if (!token) {
+        logger.error('User token not found');
+        return res.status(401).json({ error: 'User token not found' });
+      }
+
+      const userId = await AuthController.checkAuth(token);
+      await ChatController.deleteChats(req, res);
+      await AuthController.getDisconnect(req, res);
+      await mongoClient.deleteUser(userId);
+      res.status(200).json('User deleted successfully');
+    } catch (error: any) {
+      logger.error(`Error deleting user: ${error.message}`);
+      if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
+        return res.status(401).json({ error: error.message });
+      }
       res.status(500).json({ error: 'Internal Server Error'});
     }
   }

@@ -49,6 +49,18 @@ class MongoClient {
     return await this.userModel.findOne(query).exec();
   }
 
+  public async findUsers(query: any): Promise<IUser[] | null> {
+    return await this.userModel.find(query).exec();
+  }
+
+  public async updateUser(query: any, update: any): Promise<void> {
+    await this.userModel.updateOne(query, update).exec();
+  }
+
+  public async deleteUser(query: any): Promise<void> {
+    await this.userModel.deleteOne(query).exec();
+  }
+
   public async findChat(query: any): Promise<IChat | null> {
     return await this.chatModel.findOne(query).exec();
   }
@@ -59,6 +71,14 @@ class MongoClient {
 
   public async updateChat(query: any, update: any): Promise<void> {
     await this.chatModel.updateOne(query, update).exec();
+  }
+
+  public async deleteChat(query: any): Promise<void> {
+    await this.chatModel.deleteOne(query).exec();
+  }
+
+  public async deleteChats(query: any): Promise<void> {
+    await this.chatModel.deleteMany(query).exec();
   }
 }
 
