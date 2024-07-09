@@ -10,8 +10,8 @@ const redisClient = new RedisClient();
 class AuthController {
     static async getConnect(req: Request, res: Response) {
         try {
-            // TODO: Implement remeber me functionality
             const authHeader = req.headers.authorization;
+            const { rememberMe } = req.body;
 
             if (!authHeader || !authHeader.startsWith('Basic ')) {
                 logger.error('Authorization header missing or malformed');
@@ -39,13 +39,19 @@ class AuthController {
                 return res.status(400).json({ error: 'Invalid password' });
             }
 
-            const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET!, { expiresIn: '1d' });
-            await redisClient.set(`auth_${token}`, user.id.toString(), 60 * 60 * 24);
+            const token = jwt.sign(
+                { id: user._id, rememberMe },
+                process.env.JWT_SECRET!,
+                { expiresIn: rememberMe ? '30d' : '1d' }
+            );
+            const redisExpiration = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
+            await redisClient.set(`auth_${token}`, user.id.toString(), redisExpiration);
 
             res.cookie('token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict'
+                sameSite: 'strict',
+                maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
             });
 
             logger.info('User connected');
@@ -79,10 +85,18 @@ class AuthController {
             throw new Error('Token needs to be passed');
         }
 
+        let decodedToken: any;
+        try {
+            decodedToken = jwt.verify(token, process.env.JWT_SECRET!);
+        } catch (error) {
+            logger.error('Invalid token');
+            throw new Error('Invalid token');
+        }
+
         const userId = await redisClient.get(`auth_${token}`);
         if (!userId) {
-            logger.error('User token not found');
-            throw new Error('User token not found');
+            logger.error('User token not found in Redis');
+            throw new Error('User token not found in Redis');
         }
         return userId;
     }
