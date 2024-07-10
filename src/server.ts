@@ -45,6 +45,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    try {
+      AuthController.checkAuth(socket.handshake.headers.tk as string);
+    } catch (error: any) {
+      logger.error(`Authintication Error: ${error.message}`);
+      return;
+    }
     logger.info("User disconnected");
   });
 
