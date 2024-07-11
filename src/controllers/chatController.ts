@@ -87,14 +87,14 @@ class ChatController {
       }
 
       const userId = await AuthController.checkAuth(token);
-      const chachedChats: IChat[] = JSON.parse(await redisClient.get(`chats_${userId}`) || '[]');
-      if (chachedChats.length > 0) {
-        chachedChats.forEach((chat: IChat) => {
+      const cachedChats: IChat[] = JSON.parse(await redisClient.get(`chats_${userId}`) || '[]');
+      if (cachedChats.length > 0) {
+        cachedChats.forEach((chat: IChat) => {
           chat.messages.forEach((message: IMessage) => {
             message.message = Buffer.from(message.message, 'base64').toString('ascii');
           });
         });
-        return res.status(200).json(chachedChats);
+        return res.status(200).json(cachedChats);
       }
 
       const chats = await mongoClient.findChats({ participants: userId });
@@ -104,7 +104,7 @@ class ChatController {
       if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
         return res.status(401).json({ error: error.message });
       }
-      res.status(500).json({ error: 'Internal Server Error'});
+      res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 
@@ -180,7 +180,7 @@ class ChatController {
       if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
         return res.status(401).json({ error: error.message });
       }
-      res.status(500).json({ error: 'Internal Server Error'});
+      res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 }

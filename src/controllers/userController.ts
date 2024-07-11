@@ -25,8 +25,18 @@ class UserController {
       const hashedPassword = await bcrypt.hash(user.password, 10);
       user.password = hashedPassword;
 
-      await mongoClient.createUser(user);
-      res.status(201).json('User created successfully');
+      const newUser = await mongoClient.createUser(user);
+
+      await AuthController.createToken(newUser, res);
+
+      logger.info('User connected');
+      return res.status(201).json({
+        id: newUser._id,
+        username: newUser.username,
+        phone: newUser.phone || '',
+        profilePicture: newUser.profilePicture || '',
+        bio: newUser.bio || '',
+      });
     } catch (error: any) {
       logger.error(`Error creating user: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });
@@ -35,37 +45,58 @@ class UserController {
 
   static async getUser(req: Request, res: Response) {
     try {
-      const token = req.cookies.token;
-      if (!token) {
-        logger.error('User token not found');
-        return res.status(401).json({ error: 'User token not found' });
-      }
+      const userId = res.locals.userId;
 
-      const userId = await AuthController.checkAuth(token);
-      const user: IUser | null = await mongoClient.findUser({ _id: userId });
+      const user: IUser | null = await mongoClient.findUser({
+        _id:
+          userId
+      });
       if (!user) {
         logger.error('User not found');
         return res.status(404).json({ error: 'User not found' });
       }
-      res.status(200).json(user);
+
+      logger.info('User retrieved');
+      res.status(200).json({
+        id: user._id,
+        username: user.username,
+        phone: user.phone || '',
+        profilePicture: user.profilePicture || '',
+        bio: user.bio || '',
+      });
+    } catch (error: any) {
+      logger.error(`Error retrieving user: ${error.message}`);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async getUserByUsername(req: Request, res: Response) {
+    try {
+      const username = req.params.username;
+
+      const user: IUser | null = await mongoClient.findUser({ username });
+      if (!user) {
+        logger.error('User not found');
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.status(200).json({
+        id: user._id,
+        username: user.username,
+        phone: user.phone || '',
+        profilePicture: user.profilePicture || '',
+        bio: user.bio || '',
+      });
     } catch (error: any) {
       logger.error(`Error retrieving user: ${error.message}`);
       if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
         return res.status(401).json({ error: error.message });
       }
-      res.status(500).json({ error: 'Internal Server Error'});
-    }
-  }
-
-  static async getUsers(req: Request, res: Response) {
-    try {
-      const users = await mongoClient.findUsers({});
-      res.status(200).json(users);
-    } catch (error: any) {
-      logger.error(`Error retrieving users: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });
     }
   }
+
+
 
   static async updateUser(req: Request, res: Response) {
     try {
@@ -92,7 +123,7 @@ class UserController {
       if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
         return res.status(401).json({ error: error.message });
       }
-      res.status(500).json({ error: 'Internal Server Error'});
+      res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 
@@ -114,7 +145,27 @@ class UserController {
       if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
         return res.status(401).json({ error: error.message });
       }
-      res.status(500).json({ error: 'Internal Server Error'});
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async getUsers(req: Request, res: Response) {
+    try {
+      const { query } = req.query;
+      const users: IUser[] | null = await mongoClient.findUsers(query ? { username: { $regex: query, $options: 'i' } } : {});
+
+      const usersData = users?.map(user => ({
+        id: user._id,
+        username: user.username,
+        phone: user.phone || '',
+        profilePicture: user.profilePicture || '',
+        bio: user.bio || '',
+      })) || [];
+
+      res.status(200).json(usersData);
+    } catch (error: any) {
+      logger.error(`Error retrieving users: ${error.message}`);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 }

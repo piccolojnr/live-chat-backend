@@ -8,6 +8,16 @@ import { logger } from '../utils/logger';
 const redisClient = new RedisClient();
 
 class AuthController {
+
+    static async createToken(user: any, res: Response) {
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET!, { expiresIn: '1d' });
+        await redisClient.set(`auth_${token}`, user.id.toString(), 60 * 60 * 24);
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+    }
     static async getConnect(req: Request, res: Response) {
         try {
             const authHeader = req.headers.authorization;
@@ -39,23 +49,16 @@ class AuthController {
                 return res.status(400).json({ error: 'Invalid password' });
             }
 
-            const token = jwt.sign(
-                { id: user._id, rememberMe },
-                process.env.JWT_SECRET!,
-                { expiresIn: rememberMe ? '30d' : '1d' }
-            );
-            const redisExpiration = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
-            await redisClient.set(`auth_${token}`, user.id.toString(), redisExpiration);
-
-            res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
-            });
+            await AuthController.createToken(user, res);
 
             logger.info('User connected');
-            return res.status(200).json({ token });
+            return res.status(200).json({
+                id: user._id,
+                username: user.username,
+                phone: user.phone || '',
+                profilePicture: user.profilePicture || '',
+                bio: user.bio || '',
+            });
         } catch (error: any) {
             logger.error(error.message);
             return res.status(500).json({ error: error.message });
@@ -119,6 +122,23 @@ class AuthController {
         res.clearCookie('token');
         logger.info('User disconnected');
         return res.status(204).send();
+    }
+
+    static async checkAuthMiddleware(req: Request, res: Response, next: any) {
+        const token = req.cookies.token;
+        if (!token) {
+            logger.error('Token not found');
+            return res.status(401).json({ error: 'Token not found' });
+        }
+
+        try {
+            const userId = await AuthController.checkAuth(token);
+            res.locals.userId = userId;
+            next();
+        } catch (error: any) {
+            logger.error(error.message);
+            return res.status(500).json({ error: error.message });
+        }
     }
 }
 
