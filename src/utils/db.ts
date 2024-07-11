@@ -75,12 +75,22 @@ class MongoClient {
       .exec();
   }
 
+  public async updateUser(query: any, update: any): Promise<void> {
+    await this.userModel.updateOne(query, update)
+      .exec();
+  }
+
   public async deleteChat(query: any): Promise<void> {
     await this.chatModel.deleteOne(query).exec();
   }
 
   public async deleteChats(query: any): Promise<void> {
     await this.chatModel.deleteMany(query).exec();
+  }
+
+  public async deleteUser(query: any): Promise<void> {
+    await this.userModel.deleteOne
+      (query).exec();
   }
 }
 
