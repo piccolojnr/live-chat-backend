@@ -8,6 +8,16 @@ import { logger } from '../utils/logger';
 const redisClient = new RedisClient();
 
 class AuthController {
+
+    static async createToken(user: any, res: Response) {
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET!, { expiresIn: '1d' });
+        await redisClient.set(`auth_${token}`, user.id.toString(), 60 * 60 * 24);
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+    }
     static async getConnect(req: Request, res: Response) {
         try {
             // TODO: Implement remeber me functionality
@@ -39,17 +49,16 @@ class AuthController {
                 return res.status(400).json({ error: 'Invalid password' });
             }
 
-            const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET!, { expiresIn: '1d' });
-            await redisClient.set(`auth_${token}`, user.id.toString(), 60 * 60 * 24);
-
-            res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict'
-            });
+            await AuthController.createToken(user, res);
 
             logger.info('User connected');
-            return res.status(200).json({ token });
+            return res.status(200).json({
+                id: user._id,
+                username: user.username,
+                phone: user.phone || '',
+                profilePicture: user.profilePicture || '',
+                bio: user.bio || '',
+            });
         } catch (error: any) {
             logger.error(error.message);
             return res.status(500).json({ error: error.message });

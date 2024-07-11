@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { IUser } from '../models/userModel';
 import mongoClient from '../utils/db';
 import { logger } from '../utils/logger';
+import AuthController from './authController';
 
 
 
@@ -24,8 +25,18 @@ class UserController {
       const hashedPassword = await bcrypt.hash(user.password, 10);
       user.password = hashedPassword;
 
-      await mongoClient.createUser(user);
-      res.status(201).json('User created successfully');
+      const newUser = await mongoClient.createUser(user);
+
+      await AuthController.createToken(newUser, res);
+
+      logger.info('User connected');
+      return res.status(201).json({
+        id: newUser._id,
+        username: newUser.username,
+        phone: newUser.phone || '',
+        profilePicture: newUser.profilePicture || '',
+        bio: newUser.bio || '',
+      });
     } catch (error: any) {
       logger.error(`Error creating user: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });
@@ -45,7 +56,7 @@ class UserController {
         return res.status(404).json({ error: 'User not found' });
       }
 
-
+      logger.info('User retrieved');
       res.status(200).json({
         id: user._id,
         username: user.username,

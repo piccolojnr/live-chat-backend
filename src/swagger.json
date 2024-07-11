@@ -89,12 +89,7 @@
                     "200": {
                         "description": "Successful login",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "token": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/User"
                         }
                     },
                     "400": {

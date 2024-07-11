@@ -37,8 +37,8 @@ class MongoClient {
     return this.client;
   }
 
-  public async createUser(user: IUser): Promise<void> {
-    await this.userModel.create(user);
+  public async createUser(user: IUser): Promise<IUser> {
+    return await this.userModel.create(user);
   }
 
   public async createChat(chat: IChat): Promise<void> {
