@@ -17,28 +17,16 @@ class ChatController {
         logger.error('Invalid chat participants');
         return res.status(400).json({ error: 'Invalid chat participants' });
       }
-      if (!chat.messages || chat.messages.length < 1) {
-        logger.error('Invalid chat messages');
-        return res.status(400).json({ error: 'Invalid chat messages' });
-      }
-      chat.messages.forEach((message: IMessage) => {
-        if (!message.sender || !message.message) {
-          logger.error('Invalid message');
-          return res.status(400).json({ error: 'Invalid message' });
+      for (let i = 0; i < chat.participants.length; i++) {
+        const participant = await mongoClient.findUser({ username: chat.participants[i] });
+        if (!participant) {
+          logger.error('Participant not found');
+          return res.status(404).json({ error: 'Participant not found' });
         }
-      });
-      chat.messages.forEach((message: IMessage) => {
-        message.timestamp = new Date();
-        message.message = Buffer.from(message.message).toString('base64');
-      });
-
-      const chatId = new ObjectId();
-      chat._id = chatId;
-      await redisClient.set(`chat_${chatId}`, JSON.stringify(chat), 60 * 60 * 24);
-      logger.info('Chat created successfully in Redis');
-
-      await mongoClient.createChat(chat);
-      res.status(201).json({ message: 'Chat created successfully', chatId });
+        chat.participants[i] = participant.id;
+      }
+      chat.messages = [];
+      res.status(200).json(await mongoClient.createChat(chat));
     } catch (error: any) {
       logger.error(`Error creating chat: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });

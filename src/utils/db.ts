@@ -41,8 +41,8 @@ class MongoClient {
     return await this.userModel.create(user);
   }
 
-  public async createChat(chat: IChat): Promise<void> {
-    await this.chatModel.create(chat);
+  public async createChat(chat: IChat): Promise<IChat> {
+    return await this.chatModel.create(chat);
   }
 
   public async findUser(query: any): Promise<IUser | null> {
