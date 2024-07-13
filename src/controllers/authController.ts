@@ -9,13 +9,14 @@ const redisClient = new RedisClient();
 
 class AuthController {
 
-    static async createToken(user: any, res: Response) {
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET!, { expiresIn: '1d' });
-        await redisClient.set(`auth_${token}`, user.id.toString(), 60 * 60 * 24);
+    static async createToken(user: any, res: Response, rememberMe: boolean = false) {
+        const token = jwt.sign({ id: user._id, rememberMe }, process.env.JWT_SECRET!, { expiresIn: rememberMe? '30d':'1d' });
+        await redisClient.set(`auth_${token}`, user.id.toString(), rememberMe? 60 * 60 * 24 * 30 : 60 * 60 * 24);
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict'
+            sameSite: 'strict',
+            maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
         });
     }
     static async getConnect(req: Request, res: Response) {
@@ -49,7 +50,11 @@ class AuthController {
                 return res.status(400).json({ error: 'Invalid password' });
             }
 
-            await AuthController.createToken(user, res);
+            if (rememberMe) {
+                await AuthController.createToken(user, res, true);
+            } else {
+                await AuthController.createToken(user, res);
+            }
 
             logger.info('User connected');
             return res.status(200).json({
