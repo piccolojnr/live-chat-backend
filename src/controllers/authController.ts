@@ -12,13 +12,13 @@ class AuthController {
 
     static async createToken(user: any, res: Response, rememberMe: boolean = false) {
         const token = jwt.sign(
-            { id: user._id, rememberMe },   
+            { id: user._id, rememberMe },
             JWT_SECRET,
             { expiresIn: rememberMe ? '30d' : '1d' }
         );
         const redisExpiration = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
         await redisClient.set(`auth_${token}`, user.id.toString(), redisExpiration);
-        
+
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
