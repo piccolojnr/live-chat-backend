@@ -4,18 +4,26 @@ import jwt from 'jsonwebtoken';
 import User from '../models/userModel';
 import RedisClient from '../utils/redisClient';
 import { logger } from '../utils/logger';
+import { JWT_SECRET } from '../utils/constants';
 
 const redisClient = new RedisClient();
 
 class AuthController {
 
-    static async createToken(user: any, res: Response) {
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET!, { expiresIn: '1d' });
-        await redisClient.set(`auth_${token}`, user.id.toString(), 60 * 60 * 24);
+    static async createToken(user: any, res: Response, rememberMe: boolean = false) {
+        const token = jwt.sign(
+            { id: user._id, rememberMe },   
+            JWT_SECRET,
+            { expiresIn: rememberMe ? '30d' : '1d' }
+        );
+        const redisExpiration = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
+        await redisClient.set(`auth_${token}`, user.id.toString(), redisExpiration);
+        
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict'
+            sameSite: 'strict',
+            maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
         });
     }
     static async getConnect(req: Request, res: Response) {
@@ -49,7 +57,7 @@ class AuthController {
                 return res.status(400).json({ error: 'Invalid password' });
             }
 
-            await AuthController.createToken(user, res);
+            await AuthController.createToken(user, res, rememberMe === 'true');
 
             logger.info('User connected');
             return res.status(200).json({
@@ -90,7 +98,7 @@ class AuthController {
 
         let decodedToken: any;
         try {
-            decodedToken = jwt.verify(token, process.env.JWT_SECRET!);
+            decodedToken = jwt.verify(token, JWT_SECRET);
         } catch (error) {
             logger.error('Invalid token');
             throw new Error('Invalid token');
