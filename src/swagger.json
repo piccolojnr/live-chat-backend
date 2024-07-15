@@ -166,7 +166,7 @@
                         "description": "Chat object",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/Chat"
+                            "$ref": "#/definitions/CreateChat"
                         }
                     }
                 ],
@@ -196,15 +196,6 @@
                 ],
                 "summary": "Get all chats for user",
                 "description": "Retrieve all chats for the authenticated user",
-                "parameters": [
-                    {
-                        "name": "Cookie",
-                        "in": "header",
-                        "description": "Session cookie",
-                        "required": true,
-                        "type": "string"
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Chats retrieved successfully",
@@ -286,6 +277,97 @@
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/Message"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message added successfully"
+                    },
+                    "400": {
+                        "description": "Invalid message data"
+                    },
+                    "404": {
+                        "description": "Chat not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/chat/{id}/messages": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get messages for a chat",
+                "description": "Retrieve all messages for a chat",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Chat ID",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "required": false,
+                        "default": 1
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Number of messages per page",
+                        "required": false,
+                        "default": 10
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Messages retrieved successfully",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Message"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Chat ID not found"
+                    },
+                    "404": {
+                        "description": "Chat not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Add a message to a chat",
+                "description": "Add a message to an existing chat",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Chat ID",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "message",
+                        "in": "body",
+                        "description": "Message object",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AddMessage"
                         }
                     }
                 ],
@@ -431,6 +513,20 @@
         }
     },
     "definitions": {
+        "CreateChat": {
+            "type": "object",
+            "required": [
+                "participants"
+            ],
+            "properties": {
+                "participants": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "Chat": {
             "type": "object",
             "required": [
@@ -469,6 +565,17 @@
                 "timestamp": {
                     "type": "string",
                     "format": "date-time"
+                }
+            }
+        },
+        "AddMessage": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "message": {
+                    "type": "string"
                 }
             }
         },

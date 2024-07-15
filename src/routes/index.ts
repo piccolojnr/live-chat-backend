@@ -4,6 +4,7 @@ import userRouter from "./userRoutes"
 import chatRouter from "./chatRoutes"
 import RedisClient from "../utils/redisClient"
 import mongoClient from "../utils/db"
+import AuthController from "../controllers/authController"
 const redisClient = new RedisClient()
 
 const router = express.Router()
@@ -26,6 +27,6 @@ router.get("/status", async (req, res) => {
 
 router.use("/auth", authRouter);
 router.use("/user", userRouter);
-router.use("/chat", chatRouter);
+router.use("/chat", AuthController.checkAuthMiddleware, chatRouter);
 
 export default router;

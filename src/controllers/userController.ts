@@ -30,13 +30,7 @@ class UserController {
       await AuthController.createToken(newUser, res);
 
       logger.info('User connected');
-      return res.status(201).json({
-        id: newUser._id,
-        username: newUser.username,
-        phone: newUser.phone || '',
-        profilePicture: newUser.profilePicture || '',
-        bio: newUser.bio || '',
-      });
+      return res.status(201).json(newUser);
     } catch (error: any) {
       logger.error(`Error creating user: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });
@@ -57,13 +51,7 @@ class UserController {
       }
 
       logger.info('User retrieved');
-      res.status(200).json({
-        id: user._id,
-        username: user.username,
-        phone: user.phone || '',
-        profilePicture: user.profilePicture || '',
-        bio: user.bio || '',
-      });
+      res.status(200).json(user);
     } catch (error: any) {
       logger.error(`Error retrieving user: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });
@@ -80,13 +68,7 @@ class UserController {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      res.status(200).json({
-        id: user._id,
-        username: user.username,
-        phone: user.phone || '',
-        profilePicture: user.profilePicture || '',
-        bio: user.bio || '',
-      });
+      res.status(200).json(user);
     } catch (error: any) {
       logger.error(`Error retrieving user: ${error.message}`);
       if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
@@ -154,13 +136,12 @@ class UserController {
       const { query } = req.query;
       const users: IUser[] | null = await mongoClient.findUsers(query ? { username: { $regex: query, $options: 'i' } } : {});
 
-      const usersData = users?.map(user => ({
-        id: user._id,
-        username: user.username,
-        phone: user.phone || '',
-        profilePicture: user.profilePicture || '',
-        bio: user.bio || '',
-      })) || [];
+      // remove me
+      const userId = res.locals.userId;
+
+      const usersData = users?.filter(
+        user => user.id.toString() !== userId
+      )
 
       res.status(200).json(usersData);
     } catch (error: any) {

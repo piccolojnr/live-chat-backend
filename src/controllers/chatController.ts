@@ -13,10 +13,11 @@ class ChatController {
     try {
       const chat: IChat = req.body;
 
-      if (!chat.participants || chat.participants.length < 2) {
+      if (!chat.participants || chat.participants.length < 1) {
         logger.error('Invalid chat participants');
         return res.status(400).json({ error: 'Invalid chat participants' });
       }
+      let name = chat.participants.join(':');
       for (let i = 0; i < chat.participants.length; i++) {
         const participant = await mongoClient.findUser({ username: chat.participants[i] });
         if (!participant) {
@@ -25,16 +26,38 @@ class ChatController {
         }
         chat.participants[i] = participant.id;
       }
+
+      const user = await mongoClient.findUser({ _id: res.locals.userId });
+      if (!user) {
+        logger.error('User not found');
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      name += `:${user.username}`;
+      chat.name = name;
+
+      const existingChat = await mongoClient.findChat({ participants: { $all: chat.participants } });
+      if (existingChat) {
+        return res.status(200).json(existingChat);
+      }
+
+      chat.participants.push(res.locals.userId);
       chat.messages = [];
-      res.status(200).json(await mongoClient.createChat(chat));
+      res.status(201).json(await mongoClient.createChat(chat));
     } catch (error: any) {
       logger.error(`Error creating chat: ${error.message}`);
+
+      if (error.code === 11000) {
+        logger.error('Chat already exists');
+        return res.status(409).json({ error: 'Chat already exists' });
+      }
       res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 
   static async getChat(req: Request, res: Response) {
     try {
+
       const chatId = req.params.id;
       if (!chatId) {
         logger.error('Chat ID not found');
@@ -68,30 +91,19 @@ class ChatController {
 
   static async getChats(req: Request, res: Response) {
     try {
-      const token = req.cookies.token;
-      if (!token) {
-        logger.error('User token not found');
-        return res.status(401).json({ error: 'User token not found' });
-      }
+      const userId = res.locals.userId;
+      const { query } = req.query;
 
-      const userId = await AuthController.checkAuth(token);
-      const cachedChats: IChat[] = JSON.parse(await redisClient.get(`chats_${userId}`) || '[]');
-      if (cachedChats.length > 0) {
-        cachedChats.forEach((chat: IChat) => {
-          chat.messages.forEach((message: IMessage) => {
-            message.message = Buffer.from(message.message, 'base64').toString('ascii');
-          });
-        });
-        return res.status(200).json(cachedChats);
-      }
+      const chats = await mongoClient.findChats({ participants: userId, name: { $regex: query ? query : "", $options: 'i' } });
 
-      const chats = await mongoClient.findChats({ participants: userId });
-      res.status(200).json(chats);
+      chats?.forEach((chat: IChat) => {
+        if (chat.lastMessage && chat.lastMessage.message)
+          chat.lastMessage.message = Buffer.from(chat.lastMessage.message, 'base64').toString('ascii');
+      });
+
+      res.status(200).json(chats || []);
     } catch (error: any) {
       logger.error(`Error retrieving chats: ${error.message}`);
-      if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
-        return res.status(401).json({ error: error.message });
-      }
       res.status(500).json({ error: 'Internal Server Error' });
     }
   }
@@ -171,6 +183,100 @@ class ChatController {
       res.status(500).json({ error: 'Internal Server Error' });
     }
   }
+
+  static async getChatMessages(req: Request, res: Response) {
+    try {
+      const chatId = req.params.id;
+      if (!chatId) {
+        logger.error('Chat ID not found');
+        return res.status(400).json({ error: 'Chat ID not found' });
+      }
+
+      const { page = 1, limit = 10 } = req.query;
+      const skip = (parseInt(page as string, 10) - 1) * parseInt(limit as string, 10);
+
+      const cachedMessages = await redisClient.getMessagesFromCache(chatId, skip, skip + (limit as number) - 1);
+      if (cachedMessages.length > 0) {
+        return res.status(200).json(cachedMessages);
+      }
+
+      const chat = await mongoClient.getMessagesFromChat(chatId, skip, parseInt(limit as string, 10));
+      if (!chat) {
+        logger.error('Chat not found');
+        return res.status(404).json({ error: 'Chat not found' });
+      }
+
+      const messages = chat.messages.map((message: IMessage) => {
+        message.message = Buffer.from(message.message, 'base64').toString('ascii');
+        return message;
+      });
+
+      for (const message of messages) {
+        await redisClient.addMessageToCache(chatId, message);
+      }
+
+      res.status(200).json(messages);
+    } catch (error: any) {
+      logger.error(`Error retrieving chat messages: ${error.message}`);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async addChatMessage(req: Request, res: Response) {
+    try {
+      const chatId = req.params.id;
+      if (!chatId) {
+        logger.error('Chat ID not found');
+        return res.status(400).json({ error: 'Chat ID not found' });
+      }
+
+      const { message } = req.body;
+      if (!message) {
+        logger.error('Message not found');
+        return res.status(400).json({ error: 'Message not found' });
+      }
+
+      const sender = await mongoClient.findUser({ _id: res.locals.userId });
+      if (!sender) {
+        logger.error('Sender not found');
+        return res.status(404).json({ error: 'Sender not found' });
+      }
+
+      const newMessage: IMessage = {
+        sender: sender.id,
+        message: Buffer.from(message).toString('base64'),
+        timestamp: new Date()
+      };
+
+      // Add message to MongoDB
+      const chat = await mongoClient.addMessageToChat(chatId, newMessage);
+      if (!chat) {
+        logger.error('Chat not found');
+        return res.status(404).json({ error: 'Chat not found' });
+      }
+
+
+
+      // Get updated last message from MongoDB
+      const lastMessage = await mongoClient.getChatLastMessage(chatId);
+      if (!lastMessage) {
+        logger.error('Last message not found');
+        return res.status(404).json({ error: 'Last message not found' });
+      }
+
+      // Decode message for response
+      lastMessage.message = Buffer.from(lastMessage.message, 'base64').toString('ascii');
+      // Update Redis cache with the new message
+      await redisClient.addMessageToCache(chatId, lastMessage);
+
+      logger.info('Chat updated successfully in Redis');
+      res.status(201).json(lastMessage);
+    } catch (error: any) {
+      logger.error(`Error adding chat message: ${error.message}`);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
 }
 
 export default ChatController;
