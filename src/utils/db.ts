@@ -119,7 +119,11 @@ class MongoClient {
   public async getMessagesFromChat(chatId: string, skip: number, limit: number) {
     return this.chatModel.findById(chatId, {
       messages: { $slice: [skip, limit] }
-    }).select('messages');
+    }).select('messages').
+      populate({
+        path: 'messages.sender',
+        select: 'username profilePicture'
+      }).exec();
   }
 
 
