@@ -34,6 +34,23 @@ class RedisClient {
     async del(key: string) {
         await this.client.del(key);
     }
+
+    async getMessagesFromCache(chatId: string, start: number, end: number) {
+        const key = `chat_${chatId}_messages`;
+        return this.client.lrange(key, start, end);
+    }
+
+    async addMessageToCache(chatId: string, message: string) {
+        const key = `chat_${chatId}_messages`;
+        await this.client.lpush(key, message);
+        // Optionally set an expiry time for the cache if needed
+        await this.client.expire(key, 60 * 60 * 24); // 24 hours
+    }
+
+    async getMessagesCount(chatId: string) {
+        const key = `chat_${chatId}_messages`;
+        return this.client.llen(key);
+    }
 }
 
 export default RedisClient;

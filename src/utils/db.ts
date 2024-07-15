@@ -1,8 +1,9 @@
 import mongoose, { Model, Mongoose } from "mongoose";
-import { IChat } from "../models/chatModel";
+import { IChat, IMessage } from "../models/chatModel";
 import { IUser } from "../models/userModel";
 import User from "../models/userModel";
 import Chat from "../models/chatModel";
+
 
 class MongoClient {
   private static instance: MongoClient;
@@ -13,6 +14,8 @@ class MongoClient {
   private constructor() {
     this.client = mongoose;
   }
+
+
 
   public static getInstance(): MongoClient {
     if (!MongoClient.instance) {
@@ -43,6 +46,7 @@ class MongoClient {
 
   public async createChat(chat: IChat): Promise<IChat> {
     return await this.chatModel.create(chat);
+
   }
 
   public async findUser(query: any): Promise<IUser | null> {
@@ -57,17 +61,67 @@ class MongoClient {
   }
   public async findChat(query: any): Promise<IChat | null> {
     return await this.chatModel.findOne(query)
-      .populate("participants", "username")
+      .populate(
+        {
+          path: 'participants',
+          select: 'username profilePicture'
+        }
+      )
       .select("-messages")
       .exec();
   }
 
+  public async findChatMessages(query: any): Promise<IChat | null> {
+    return await this.chatModel.findOne(query).populate({
+      path: 'messages.sender',
+      select: 'username profilePicture'
+    }).exec();
+  }
+
+
+
+
   public async findChats(query: any): Promise<IChat[] | null> {
     return await this.chatModel.find(query)
-      .populate("participants", "username")
+      .populate(
+        {
+          path: 'participants',
+          select: 'username profilePicture'
+        }
+      )
       .select("-messages")
       .exec()
   }
+  public async addMessageToChat(chatId: string, message: IMessage) {
+    const updateResult = await this.chatModel.findByIdAndUpdate(
+      chatId,
+      {
+        $push: { messages: message },
+        $set: { lastMessage: message }
+      },
+      { new: true, useFindAndModify: false }
+    );
+    return updateResult;
+  }
+
+  public async getChatLastMessage(chatId: string): Promise<IMessage | null> {
+    return (await this.chatModel.findOne({
+      _id: chatId,
+    })
+      .populate({
+        path: 'lastMessage.sender',
+        select: 'username profilePicture'
+      })
+      .select("-messages")
+      .exec())?.lastMessage || null;
+  }
+
+  public async getMessagesFromChat(chatId: string, skip: number, limit: number) {
+    return this.chatModel.findById(chatId, {
+      messages: { $slice: [skip, limit] }
+    }).select('messages');
+  }
+
 
   public async updateChat(query: any, update: any): Promise<void> {
     await this.chatModel.updateOne(query, update)
