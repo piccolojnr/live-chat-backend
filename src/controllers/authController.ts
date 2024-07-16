@@ -19,12 +19,7 @@ class AuthController {
         const redisExpiration = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
         await redisClient.set(`auth_${token}`, user.id.toString(), redisExpiration);
 
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
-        });
+        return token;
     }
     static async getConnect(req: Request, res: Response) {
         try {
@@ -57,7 +52,7 @@ class AuthController {
                 return res.status(400).json({ error: 'Invalid password' });
             }
 
-            await AuthController.createToken(user, res, rememberMe === 'true');
+            const token = await AuthController.createToken(user, res, rememberMe === 'true');
 
             logger.info('User connected');
             return res.status(200).json({
@@ -66,6 +61,8 @@ class AuthController {
                 phone: user.phone || '',
                 profilePicture: user.profilePicture || '',
                 bio: user.bio || '',
+                token,
+
             });
         } catch (error: any) {
             logger.error(error.message);
@@ -74,7 +71,7 @@ class AuthController {
     }
 
     static async auth(req: Request, res: Response) {
-        const token = req.cookies.token;
+        const token = req.header('X-Token');
         if (!token) {
             logger.error('Token not found');
             return res.status(401).json({ error: 'Token not found' });
@@ -113,7 +110,7 @@ class AuthController {
     }
 
     static async getDisconnect(req: Request, res: Response) {
-        const token = req.cookies.token;
+        const token = req.header('X-Token');
 
         if (!token) {
             logger.error('Token not found');
@@ -133,7 +130,12 @@ class AuthController {
     }
 
     static async checkAuthMiddleware(req: Request, res: Response, next: any) {
-        const token = req.cookies.token;
+        const token = req.header('X-Token');
+        if (!token) {
+            logger.error('Token not found');
+            return res.status(401).json({ error: 'Token not found' });
+        }
+
         if (!token) {
             logger.error('Token not found');
             return res.status(401).json({ error: 'Token not found' });

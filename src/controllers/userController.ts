@@ -27,10 +27,17 @@ class UserController {
 
       const newUser = await mongoClient.createUser(user);
 
-      await AuthController.createToken(newUser, res);
+      const token = await AuthController.createToken(newUser, res);
 
       logger.info('User connected');
-      return res.status(201).json(newUser);
+      return res.status(201).json({
+        id: newUser._id,
+        username: newUser.username,
+        phone: newUser.phone || '',
+        profilePicture: newUser.profilePicture || '',
+        bio: newUser.bio || '',
+        token,
+      });
     } catch (error: any) {
       logger.error(`Error creating user: ${error.message}`);
       res.status(500).json({ error: 'Internal Server Error' });

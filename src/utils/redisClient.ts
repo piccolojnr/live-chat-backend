@@ -36,6 +36,24 @@ class RedisClient {
         await this.client.del(key);
     }
 
+    async publishMessage(chatId: string, message: IMessage) {
+        const key = `chat_${chatId}_messages`;
+        const messageStr = Buffer.from(JSON.stringify(message)).toString('base64');
+        await this.client.publish(key, messageStr);
+    }
+
+    async subscribeToChat(chatId: string, callback: (channel: string, message: string) => void) {
+        const key = `chat_${chatId}_messages`;
+        await this.client.subscribe(key);
+        this.client.on('message', callback);
+    }
+
+    async unsubscribe(chatId: string) {
+        const key = `chat_${chatId}_messages`;
+        await this.client.unsubscribe(key);
+    }
+
+
     async getMessagesFromCache(chatId: string, start: number, end: number) {
         const key = `chat_${chatId}_messages`;
         const cachedMessages = await this.client.lrange(key, start, end);

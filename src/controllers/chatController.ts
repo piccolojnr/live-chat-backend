@@ -35,13 +35,14 @@ class ChatController {
 
       name += `:${user.username}`;
       chat.name = name;
+      chat.participants.push(res.locals.userId);
+
 
       const existingChat = await mongoClient.findChat({ participants: { $all: chat.participants } });
       if (existingChat) {
         return res.status(200).json(existingChat);
       }
 
-      chat.participants.push(res.locals.userId);
       chat.messages = [];
       res.status(201).json(await mongoClient.createChat(chat));
     } catch (error: any) {
@@ -254,6 +255,9 @@ class ChatController {
         logger.error('Chat not found');
         return res.status(404).json({ error: 'Chat not found' });
       }
+
+      // publish message to Redis
+      await redisClient.publishMessage(chatId, newMessage);
 
 
 
