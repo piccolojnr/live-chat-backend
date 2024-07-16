@@ -105,15 +105,15 @@ class MongoClient {
   }
 
   public async getChatLastMessage(chatId: string): Promise<IMessage | null> {
-    return (await this.chatModel.findOne({
-      _id: chatId,
-    })
+    const chat = await this.chatModel.findOne({ _id: chatId })
       .populate({
         path: 'lastMessage.sender',
         select: 'username profilePicture'
       })
-      .select("-messages")
-      .exec())?.lastMessage || null;
+      .select('-messages')
+      .exec();
+
+    return chat?.lastMessage || null;
   }
 
   public async getMessagesFromChat(chatId: string, skip: number, limit: number) {

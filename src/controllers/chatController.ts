@@ -1,12 +1,10 @@
 import { Request, Response } from 'express';
-import { ObjectId } from 'mongodb';
 import AuthController from './authController';
 import { IChat, IMessage } from '../models/chatModel';
 import mongoClient from '../utils/db';
-import RedisClient from '../utils/redisClient';
+import redisClient from '../utils/redisClient';
 import { logger } from '../utils/logger';
 
-const redisClient = new RedisClient();
 
 class ChatController {
   static async createChat(req: Request, res: Response) {
@@ -256,8 +254,7 @@ class ChatController {
         return res.status(404).json({ error: 'Chat not found' });
       }
 
-      // publish message to Redis
-      await redisClient.publishMessage(chatId, newMessage);
+
 
 
 
@@ -270,6 +267,8 @@ class ChatController {
 
       // Decode message for response
       lastMessage.message = Buffer.from(lastMessage.message, 'base64').toString('ascii');
+      // publish message to Redis
+      await redisClient.publishMessage(chatId, lastMessage);
       // Update Redis cache with the new message
       await redisClient.addMessageToCache(chatId, lastMessage);
 

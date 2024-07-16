@@ -2,10 +2,9 @@ import express from "express"
 import authRouter from "./authRoutes"
 import userRouter from "./userRoutes"
 import chatRouter from "./chatRoutes"
-import RedisClient from "../utils/redisClient"
+import redisClient from "../utils/redisClient"
 import mongoClient from "../utils/db"
 import AuthController from "../controllers/authController"
-const redisClient = new RedisClient()
 
 const router = express.Router()
 

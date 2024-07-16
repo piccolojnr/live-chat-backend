@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
 import { IMessage } from '../models/chatModel';
+import { logger } from './logger';
 
 dotenv.config();
 
@@ -11,6 +12,7 @@ const password = process.env.REDIS_PASSWORD || '';
 
 class RedisClient {
     private client: Redis;
+    private subClient: Redis;
 
     constructor() {
         this.client = new Redis({
@@ -18,10 +20,52 @@ class RedisClient {
             port: parseInt(port),
             password,
         });
+        this.subClient = new Redis({
+            host,
+            port: parseInt(port),
+            password,
+        });
+
+        this.client.on('error', (error) => {
+            logger.error(`Redis client error: ${error.message}`);
+
+        });
+
+        this.subClient.on('error', (error) => {
+            logger.error(`Redis sub client error: ${error.message}`);
+        });
+
+        this.client.on('connect', () => {
+            logger.info('Connected to Redis');
+        });
+
+        this.subClient.on('connect', () => {
+            logger.info('Connected to Redis sub client');
+        });
     }
 
     isAlive(): boolean {
         return this.client.status === 'ready';
+    }
+
+    async sadd(key: string, value: string) {
+        await this.client.sadd(key, value);
+    }
+
+    async srem(key: string, value: string) {
+        await this.client.srem(key, value);
+    }
+
+    async smembers(key: string) {
+        return this.client.smembers(key);
+    }
+
+    async sismember(key: string, value: string) {
+        return this.client.sismember(key, value);
+    }
+
+    async scard(key: string) {
+        return this.client.scard(key);
     }
 
     async set(key: string, value: string, expire: number) {
@@ -42,15 +86,15 @@ class RedisClient {
         await this.client.publish(key, messageStr);
     }
 
-    async subscribeToChat(chatId: string, callback: (channel: string, message: string) => void) {
+    async subscribeToChat(chatId: string, callback: (channel: string, message: string) => void): Promise<void> {
         const key = `chat_${chatId}_messages`;
-        await this.client.subscribe(key);
-        this.client.on('message', callback);
+        await this.subClient.subscribe(key);
+        this.subClient.on('message', callback);
     }
 
-    async unsubscribe(chatId: string) {
+    async unsubscribe(chatId: string): Promise<void> {
         const key = `chat_${chatId}_messages`;
-        await this.client.unsubscribe(key);
+        await this.subClient.unsubscribe(key);
     }
 
 
@@ -73,4 +117,6 @@ class RedisClient {
     }
 }
 
-export default RedisClient;
+const redisClient = new RedisClient();
+
+export default redisClient;

@@ -3,7 +3,7 @@ import { Server } from "socket.io";
 import app from "./app";
 import { logger } from "./utils/logger";
 import AuthController from "./controllers/authController";
-import RedisClient from "./utils/redisClient";
+import redisClient from "./utils/redisClient";
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -13,17 +13,15 @@ const io = new Server(server, {
     credentials: true
   }
 });
-const redisClient = new RedisClient();
 
 
 io.on("connection", async (socket) => {
   logger.info("New WebSocket connection");
 
+  let userId;
   try {
-    // get token from cookie and check if it is valid
     const token = socket.handshake.auth.token;
-    logger.info(`Token: ${token}`);
-    await AuthController.checkAuth(token as string);
+    userId = await AuthController.checkAuth(token as string);
   } catch (error: any) {
     logger.error(`Authentication Error: ${error.message}`);
     socket.emit("error", { message: "Authentication failed." });
@@ -31,73 +29,82 @@ io.on("connection", async (socket) => {
     return;
   }
 
-
   // Increment online count and emit to all clients
-  redisClient.get("online").then((online) => {
-    const updatedCount = (parseInt(online || "0") + 1).toString();
-    redisClient.set("online", updatedCount, 3600);
-    io.emit("online-update", updatedCount); // Broadcast updated count to all clients
-  });
+  await redisClient.sadd('online_users', userId);
+  updateOnlineCount();
+
+  socket.on("joinRoom", async (room, callback) => {
+
+    if (!room) {
+      socket.emit("error", { message: "Room is required" });
+      return;
+    }
 
 
 
-  socket.on("joinRoom", async (room) => {
 
     socket.join(room);
+    callback();
 
-    redisClient.get(`online_${room}`).then((online) => {
-      const newOnlineRoomCount = online ? parseInt(online) + 1 : 1;
-      redisClient.set(`online_${room}`, newOnlineRoomCount.toString(), 3600);
-      io.to(room).emit("onlineRoom", newOnlineRoomCount.toString());
-    });
 
+
+    await redisClient.sadd(`user_rooms:${userId}`, room);
+    await redisClient.sadd(`room_users:${room}`, userId);
+
+    // Subscribe to chat messages for the room
     redisClient.subscribeToChat(room, (channel, message) => {
-      const msg = JSON.parse(Buffer.from(message, "base64").toString("ascii"));
-      socket.emit("message", msg);
+      socket.emit("message", message);
     });
 
+    // Notify the room that the user has joined
+    io.to(room).emit('roomNotification', {
+      type: 'join',
+      users: await redisClient.smembers(`room_users:${room}`),
+    });
     logger.info(`User joined room: ${room}`);
   });
 
-  socket.on("chatMessage", async (msg) => {
-
-    io.to(msg.room).emit("message", msg);
-    logger.info(`Message: ${msg.text} sent to room: ${msg.room}`);
-  });
-
-  socket.on("leaveRoom", async (room) => {
-
+  socket.on("leaveRoom", async (room, callback) => {
     socket.leave(room);
+    callback();
+    await redisClient.srem(`user_rooms:${userId}`, room);
+    await redisClient.srem(`room_users:${room}`, userId);
+    await redisClient.unsubscribe(room);
 
-    redisClient.get(`online_${room}`).then((online) => {
-      const newOnlineRoomCount = online ? parseInt(online) - 1 : 0;
-      redisClient.set(`online_${room}`, newOnlineRoomCount.toString(), 3600);
-      io.to(room).emit("onlineRoom", newOnlineRoomCount.toString());
+    // Notify the room that the user has left
+    io.to(room).emit('roomNotification', {
+      type: 'leave',
+      users: await redisClient.smembers(`room_users:${room}`),
     });
-
-    redisClient.unsubscribe(room);
-
     logger.info(`User left room: ${room}`);
   });
 
-  socket.on("disconnect", () => {
-    // Decrement online count and emit to all clients
-    redisClient.get("online").then((online) => {
-      const _online = parseInt(online || "0")
-      if (_online > 0) {
-        const updatedCount = (_online - 1).toString();
-        redisClient.set("online", updatedCount, 3600);
-        io.emit("online-update", updatedCount); // Broadcast updated count to all clients
-      }
+  socket.on("disconnect", async () => {
+    await redisClient.srem('online_users', userId);
+
+    // Retrieve and notify all rooms the user was part of
+    const rooms = await redisClient.smembers(`user_rooms:${userId}`);
+    rooms.forEach((room) => {
+      io.to(room).emit('userDisconnected', { userId });
     });
+
+
+    // Clean up user rooms
+    await redisClient.del(`user_rooms:${userId}`);
+    updateOnlineCount();
     logger.info("User disconnected");
   });
-
 
   socket.on("error", (error) => {
     logger.error(`Socket Error: ${error.message}`);
   });
 });
+
+const updateOnlineCount = async () => {
+  const onlineCount = await redisClient.scard('online_users');
+  io.emit('online', onlineCount.toString());
+};
+
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
