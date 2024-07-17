@@ -4,6 +4,7 @@ import app from "./app";
 import { logger } from "./utils/logger";
 import AuthController from "./controllers/authController";
 import redisClient from "./utils/redisClient";
+import db from "./utils/db";
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -17,7 +18,7 @@ const io = new Server(server, {
 
 io.on("connection", async (socket) => {
   logger.info("New WebSocket connection");
-
+  const subscribedRooms = new Set();
   let userId;
   try {
     const token = socket.handshake.auth.token;
@@ -33,28 +34,28 @@ io.on("connection", async (socket) => {
   await redisClient.sadd('online_users', userId);
   updateOnlineCount();
 
-  socket.on("joinRoom", async (room, callback) => {
+  socket.on("joinRoom", async (room) => {
 
     if (!room) {
       socket.emit("error", { message: "Room is required" });
       return;
     }
 
-
-
+    if (subscribedRooms.has(room)) {
+      socket.emit("error", { message: "Already joined the room" });
+      return;
+    }
 
     socket.join(room);
-    callback();
-
-
 
     await redisClient.sadd(`user_rooms:${userId}`, room);
     await redisClient.sadd(`room_users:${room}`, userId);
 
     // Subscribe to chat messages for the room
-    redisClient.subscribeToChat(room, (channel, message) => {
-      socket.emit("message", message);
-    });
+    // redisClient.subscribeToChat(room, (channel, message) => {
+    //   subscribedRooms.add(room);
+    //   io.to(room).emit('message', message);
+    // });
 
     // Notify the room that the user has joined
     io.to(room).emit('roomNotification', {
@@ -64,9 +65,26 @@ io.on("connection", async (socket) => {
     logger.info(`User joined room: ${room}`);
   });
 
-  socket.on("leaveRoom", async (room, callback) => {
+  socket.on("send-message", async (room) => {
+    if (!room) {
+      socket.emit("error", { message: "Room is required" });
+      return;
+    }
+
+    const lastMessage = await db.getChatLastMessage(room);
+    if (!lastMessage) {
+      logger.error('Last message not found');
+      return;
+    }
+
+    lastMessage.message = Buffer.from(lastMessage.message, 'base64').toString('ascii');
+
+    const messageStr = Buffer.from(JSON.stringify(lastMessage)).toString('base64');
+    io.to(room).emit('message', messageStr);
+  });
+
+  socket.on("leaveRoom", async (room) => {
     socket.leave(room);
-    callback();
     await redisClient.srem(`user_rooms:${userId}`, room);
     await redisClient.srem(`room_users:${room}`, userId);
     await redisClient.unsubscribe(room);
@@ -78,6 +96,8 @@ io.on("connection", async (socket) => {
     });
     logger.info(`User left room: ${room}`);
   });
+
+
 
   socket.on("disconnect", async () => {
     await redisClient.srem('online_users', userId);
