@@ -5,6 +5,7 @@ import mongoClient from '../utils/db';
 import { logger } from '../utils/logger';
 import AuthController from './authController';
 import ChatController from './chatController';
+import cloudinary from 'cloudinary';
 
 
 class UserController {
@@ -89,29 +90,49 @@ class UserController {
 
   static async updateUser(req: Request, res: Response) {
     try {
-      const token = req.cookies.token;
-      if (!token) {
-        logger.error('User token not found');
-        return res.status(401).json({ error: 'User token not found' });
+
+      const userId = res.locals.userId;
+      const { bio, phone, profilePicture: picture } = req.body;
+      const profilePicture = req.file ? req.file.path : picture;
+
+      const user: IUser | null = await mongoClient.findUser({
+        _id: userId
+      });
+
+      if (!user) {
+        logger.error('User not found');
+        return res.status(404).json({ error: 'User not found' });
       }
 
-      const userId = await AuthController.checkAuth(token);
-      const user: IUser = req.body;
-      if (!user.username || !user.password) {
-        logger.error('Username or password not found');
-        return res.status(400).json({ error: 'Username or password not found' });
+
+      if (!profilePicture && user.profilePicture) {
+        const publicId = user.profilePicture.split('/').pop()?.split('.')[0]; // Extract the public ID from the URL
+        if (publicId) {
+          await cloudinary.v2.uploader.destroy(`chat-app/${publicId}`);
+          user.profilePicture = "";
+        }
+      } else {
+        user.profilePicture = profilePicture;
       }
 
-      const hashedPassword = await bcrypt.hash(user.password, 10);
-      user.password = hashedPassword;
 
-      await mongoClient.updateUser(userId, user);
-      res.status(200).json('User updated successfully');
+      user.bio = bio;
+      user.phone = phone;
+
+
+      user.save();
+
+      logger.info('User updated');
+
+      res.status(200).json({
+        id: user._id,
+        username: user.username,
+        phone: user.phone || '',
+        profilePicture: user.profilePicture || '',
+        bio: user.bio || '',
+      });
     } catch (error: any) {
       logger.error(`Error updating user: ${error.message}`);
-      if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
-        return res.status(401).json({ error: error.message });
-      }
       res.status(500).json({ error: 'Internal Server Error' });
     }
   }
