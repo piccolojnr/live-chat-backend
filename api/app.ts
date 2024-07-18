@@ -12,9 +12,9 @@ import path from 'path';
 
 dotenv.config();
 
+
 const app = express();
 
-// app.use(fileUpload());
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan('dev'));
