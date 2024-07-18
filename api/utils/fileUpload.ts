@@ -2,6 +2,7 @@ import cloudinary from 'cloudinary';
 import multer from 'multer';
 import dotenv from 'dotenv';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import path from 'path';
 
 dotenv.config();
 
@@ -11,7 +12,7 @@ cloudinary.v2.config({
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const storage = new CloudinaryStorage({
+const cloudStorage = new CloudinaryStorage({
     cloudinary: cloudinary.v2,
     params: async (req, file) => {
         return {
@@ -20,6 +21,17 @@ const storage = new CloudinaryStorage({
         };
     }
 });
+
+const localStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/')
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
+    }
+})
+
+const storage = process.env.NODE_ENV === 'production' ? cloudStorage : localStorage;
 
 const parser = multer({ storage })
 

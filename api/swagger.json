@@ -394,17 +394,6 @@
                 ],
                 "summary": "Create a new user",
                 "description": "Register a new user",
-                "parameters": [
-                    {
-                        "name": "user",
-                        "in": "body",
-                        "description": "User object",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/User"
-                        }
-                    }
-                ],
                 "responses": {
                     "201": {
                         "description": "User created successfully"

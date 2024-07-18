@@ -8,6 +8,7 @@ import mongoClient from './utils/db';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './swagger.json';
 import cors from 'cors';
+import path from 'path';
 
 dotenv.config();
 
@@ -29,5 +30,6 @@ mongoClient.connect(process.env.MONGODB_URI!)
 
 
 app.use('/api', router);
+app.use('/uploads', express.static('./uploads'));
 
 export default app;

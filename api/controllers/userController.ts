@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 import AuthController from './authController';
 import ChatController from './chatController';
 import cloudinary from 'cloudinary';
-import User from '../models/userModel';
+import fs from 'fs';
 
 
 class UserController {
@@ -27,24 +27,16 @@ class UserController {
       const hashedPassword = await bcrypt.hash(user.password, 10);
       user.password = hashedPassword;
 
-      const newUser = await mongoClient.createUser(user);
+      const newuser = await mongoClient.createUser(user);
 
-      const token = await AuthController.createToken(newUser, res);
-      const _user = await User.findOne({ username: newUser.username });
-
-      if (!_user) {
-        logger.error('User not found');
-        return res.status(404).json({ error: 'User not found' });
+      if (!newuser) {
+        logger.error('Error creating user');
+        return res.status(500).json({ error: 'Internal Server Error' });
       }
 
-      logger.info('User connected');
-      return res.status(200).json({
-        _id: _user._id,
-        username: _user.username,
-        phone: _user.phone || '',
-        profilePicture: _user.profilePicture || '',
-        bio: _user.bio || '',
-        token,
+
+      return res.status(201).json({
+        message: 'User created successfully',
       });
     } catch (error: any) {
       logger.error(`Error creating user: ${error.message}`);
@@ -93,6 +85,25 @@ class UserController {
     }
   }
 
+  static async deleteProfilePicture(user: IUser, profilePicture: string) {
+    if (user.profilePicture) {
+      if (user.profilePicture !== profilePicture) {
+        if (process.env.NODE_ENV === 'production') {
+          const publicId = user.profilePicture.split('/').pop()?.split('.')[0];
+          await cloudinary.v2.uploader.destroy(`chat-app/${publicId}`);
+        } else {
+          const path = user.profilePicture.split('/').pop();
+          await fs.unlink(`${path}`, (err) => {
+            if (err) {
+              logger.error(`Error deleting profile picture: ${err.message}`);
+            }
+          });
+
+        }
+      }
+    }
+  }
+
 
 
   static async updateUser(req: Request, res: Response) {
@@ -111,16 +122,16 @@ class UserController {
         return res.status(404).json({ error: 'User not found' });
       }
 
+      await UserController.deleteProfilePicture(user, profilePicture);
 
-      if (!profilePicture && user.profilePicture) {
-        const publicId = user.profilePicture.split('/').pop()?.split('.')[0]; // Extract the public ID from the URL
-        if (publicId) {
-          await cloudinary.v2.uploader.destroy(`chat-app/${publicId}`);
-          user.profilePicture = "";
+      if (profilePicture) {
+        if (process.env.NODE_ENV === 'production') {
+          user.profilePicture = profilePicture;
+        } else {
+          user.profilePicture = `http://localhost:5000/${profilePicture}`;
         }
-      } else {
-        user.profilePicture = profilePicture;
       }
+
 
 
       user.bio = bio;
