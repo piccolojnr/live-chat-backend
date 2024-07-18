@@ -8,11 +8,14 @@ import mongoClient from './utils/db';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './swagger.json';
 import cors from 'cors';
+import path from 'path';
+import fileUpload from 'express-fileupload';
 
 dotenv.config();
 
 const app = express();
 
+// app.use(fileUpload());
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan('dev'));
@@ -26,6 +29,8 @@ mongoClient.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chat')
     .then(() => logger.info('Connected to MongoDB'))
     .catch((err) => logger.error('Error connecting to MongoDB:', err));
 
+
 app.use('/api', router);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 export default app;
