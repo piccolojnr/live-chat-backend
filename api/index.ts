@@ -9,7 +9,7 @@ import db from "./utils/db";
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*:3000",
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
     credentials: true
   }
