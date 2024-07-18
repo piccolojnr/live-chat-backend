@@ -49,6 +49,25 @@ class UserController {
       const userId = res.locals.userId;
 
       const user: IUser | null = await mongoClient.findUser({
+        _id: userId
+      });
+      if (!user) {
+        logger.error('User not found');
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      logger.info('User retrieved');
+      res.status(200).json(user);
+    } catch (error: any) {
+      logger.error(`Error retrieving user: ${error.message}`);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async getUserById(req: Request, res: Response) {
+    try {
+      const userId = req.params.id;
+      const user: IUser | null = await mongoClient.findUser({
         _id:
           userId
       });
@@ -155,27 +174,7 @@ class UserController {
     }
   }
 
-  static async deleteUser(req: Request, res: Response) {
-    try {
-      const token = req.cookies.token;
-      if (!token) {
-        logger.error('User token not found');
-        return res.status(401).json({ error: 'User token not found' });
-      }
 
-      const userId = await AuthController.checkAuth(token);
-      await ChatController.deleteChats(req, res);
-      await AuthController.getDisconnect(req, res);
-      await mongoClient.deleteUser(userId);
-      res.status(200).json('User deleted successfully');
-    } catch (error: any) {
-      logger.error(`Error deleting user: ${error.message}`);
-      if (error.message === 'Invalid token' || error.message === 'User token not found in Redis') {
-        return res.status(401).json({ error: error.message });
-      }
-      res.status(500).json({ error: 'Internal Server Error' });
-    }
-  }
 
   static async getUsers(req: Request, res: Response) {
     try {
