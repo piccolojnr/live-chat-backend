@@ -13,3 +13,4 @@
 */.env.test
 */.env.production
 
+.vercel
