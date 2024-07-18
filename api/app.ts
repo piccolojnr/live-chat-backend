@@ -19,7 +19,7 @@ app.use(cookieParser());
 app.use(morgan('dev'));
 app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use(cors({
-    origin: process.env.CLIENT_URL,
+    origin: process.env.CLIENT_URL?.split(",") || "http://localhost:3000",
     credentials: true
 }));
 

@@ -17,7 +17,7 @@ class UserController {
         return res.status(400).json({ error: 'Username or password not found' });
       }
 
-      const existingUser = await mongoClient.findUser({ username: user.username });
+      const existingUser = await mongoClient.findUser({ username: user.username.toLowerCase() });
       if (existingUser) {
         logger.error('User already exists');
         return res.status(409).json({ error: 'User already exists' });
