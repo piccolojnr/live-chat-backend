@@ -9,7 +9,6 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './swagger.json';
 import cors from 'cors';
 import path from 'path';
-import fileUpload from 'express-fileupload';
 
 dotenv.config();
 
@@ -25,7 +24,7 @@ app.use(cors({
     credentials: true
 }));
 
-mongoClient.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chat')
+mongoClient.connect(process.env.MONGODB_URI!)
     .then(() => logger.info('Connected to MongoDB'))
     .catch((err) => logger.error('Error connecting to MongoDB:', err));
 
