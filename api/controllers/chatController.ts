@@ -40,9 +40,10 @@ class ChatController {
       if (existingChat) {
         return res.status(200).json(existingChat);
       }
-
       chat.messages = [];
-      res.status(201).json(await mongoClient.createChat(chat));
+      const newChat = await mongoClient.createChat(chat);
+      const chatData = await mongoClient.findChat({ _id: newChat._id });
+      res.status(201).json(chatData);
     } catch (error: any) {
       logger.error(`Error creating chat: ${error.message}`);
 

@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 import AuthController from './authController';
 import ChatController from './chatController';
 import cloudinary from 'cloudinary';
+import User from '../models/userModel';
 
 
 class UserController {
@@ -29,14 +30,20 @@ class UserController {
       const newUser = await mongoClient.createUser(user);
 
       const token = await AuthController.createToken(newUser, res);
+      const _user = await User.findOne({ username: newUser.username });
+
+      if (!_user) {
+        logger.error('User not found');
+        return res.status(404).json({ error: 'User not found' });
+      }
 
       logger.info('User connected');
-      return res.status(201).json({
-        id: newUser._id,
-        username: newUser.username,
-        phone: newUser.phone || '',
-        profilePicture: newUser.profilePicture || '',
-        bio: newUser.bio || '',
+      return res.status(200).json({
+        _id: _user._id,
+        username: _user.username,
+        phone: _user.phone || '',
+        profilePicture: _user.profilePicture || '',
+        bio: _user.bio || '',
         token,
       });
     } catch (error: any) {

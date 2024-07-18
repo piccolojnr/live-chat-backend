@@ -55,13 +55,12 @@ class AuthController {
 
             logger.info('User connected');
             return res.status(200).json({
-                id: user._id,
+                _id: user._id,
                 username: user.username,
                 phone: user.phone || '',
                 profilePicture: user.profilePicture || '',
                 bio: user.bio || '',
                 token,
-
             });
         } catch (error: any) {
             logger.error(error.message);
