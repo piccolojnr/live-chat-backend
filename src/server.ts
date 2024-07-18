@@ -34,31 +34,29 @@ io.on("connection", async (socket) => {
   await redisClient.sadd('online_users', userId);
   updateOnlineCount();
 
-  socket.on("joinRoom", async (rooms) => {
-    if (!rooms) {
+  socket.on("joinRoom", async (room) => {
+    if (!room) {
       socket.emit("error", { message: "Room is required" });
       return;
     }
 
-    // if (subscribedRooms.has(room)) {
-    //   socket.emit("error", { message: "Already joined the room" });
-    //   return;
-    // }
+    if (subscribedRooms.has(room)) {
+      socket.emit("error", { message: "Already joined the room" });
+      return;
+    }
 
-    socket.join(rooms);
+    socket.join(room);
 
-    rooms.forEach(async (room: any) => {
-      subscribedRooms.add(room);
+    subscribedRooms.add(room);
 
-      await redisClient.sadd(`user_rooms:${userId}`, room);
-      await redisClient.sadd(`room_users:${room}`, userId);
+    await redisClient.sadd(`user_rooms:${userId}`, room);
+    await redisClient.sadd(`room_users:${room}`, userId);
 
-      io.to(room).emit('roomNotification', {
-        type: 'join',
-        users: await redisClient.smembers(`room_users:${room}`),
-      });
-      logger.info(`User joined room: ${room}`);
-    })
+    io.to(room).emit('roomNotification', {
+      type: 'join',
+      users: await redisClient.smembers(`room_users:${room}`),
+    });
+    logger.info(`User joined room: ${room}`);
 
   });
 
@@ -78,7 +76,7 @@ io.on("connection", async (socket) => {
       return;
     }
 
-    lastMessage.message = Buffer.from(message, 'base64').toString('ascii');
+    lastMessage.message = Buffer.from(lastMessage.message, 'base64').toString('ascii');
     lastMessage.roomId = roomId;
     const messageStr = Buffer.from(JSON.stringify(lastMessage)).toString('base64');
     io.to(roomId).emit('message', messageStr);
