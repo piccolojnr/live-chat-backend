@@ -3,6 +3,7 @@ import { logger } from "../utils/logger";
 import AuthController from "../controllers/authController";
 import redisClient from "../utils/redisClient";
 import MessageController from "../controllers/messageController";
+import db from "./db";
 
 class SocketService {
     io: Server;
@@ -20,14 +21,14 @@ class SocketService {
 
 
     private async onConnection(socket: Socket) {
-        await this.authenticate(socket);
+        const profile = await this.authenticate(socket);
         this.users.push({ id: socket.data.userId, socketId: socket.id });
         this.updateUserList("update", {
             userId: socket.data.userId
         });
-        this.onSendMessage(socket);
+        this.onSendMessage(socket, profile);
         this.onDisconnect(socket);
-        logger.info(`User connected: ${socket.data.userId}`);
+        logger.info(`User connected: ${profile?.username}`);
     }
 
     // ----------------- New Helper Functions -----------------
@@ -36,6 +37,7 @@ class SocketService {
         try {
             const token = socket.handshake.auth.token;
             socket.data.userId = await AuthController.checkAuth(token as string);
+            return await db.findUser({ _id: socket.data.userId });
         } catch (error: any) {
             logger.error(`Authentication Error: ${error.message}`);
             socket.emit("error", { message: "Authentication failed." });
@@ -43,7 +45,7 @@ class SocketService {
         }
     }
 
-    private async onSendMessage(socket: Socket) {
+    private async onSendMessage(socket: Socket, profile?: any) {
         socket.on("send-message", async ({ to, from, message }) => {
             if (!to || !from || !message) {
                 socket.emit("error", { message: "Invalid message data" });
@@ -58,8 +60,9 @@ class SocketService {
             }
 
             const messageData = {
-                to,
-                from,
+                sender: from,
+                key: createdMessage.key,
+                username: profile.username,
                 message,
                 timestamp: createdMessage.timestamp
             };

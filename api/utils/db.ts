@@ -79,16 +79,12 @@ class MongoClient {
   public async findMessages(query: any): Promise<IMessage[] | null> {
     return await this.messageModel.find(query)
       .sort({ timestamp: -1 })
-      .populate("to", "username profilePicture")
-      .populate("from", "username profilePicture")
       .exec();
   }
 
   public async findLastMessage(query: any): Promise<IMessage | null> {
     return await this.messageModel.findOne(query)
       .sort({ timestamp: -1 })
-      .populate("to", "username profilePicture")
-      .populate("from", "username profilePicture")
       .exec();
   }
 

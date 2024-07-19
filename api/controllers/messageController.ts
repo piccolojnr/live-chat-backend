@@ -29,7 +29,7 @@ class MessageController {
                 return;
             }
 
-            messages = await db.findMessages({ $or: [{ to: userId1, from: userId2 }, { to: userId2, from: userId1 }] }) || [];
+            messages = await db.findMessages({ key }) || [];
 
             messages.forEach((message: IMessage) => {
                 message.message = Buffer.from(message.message, 'base64').toString('utf-8');
@@ -39,16 +39,15 @@ class MessageController {
                 await redisClient.saveMessagesToCache(key, messages);
             }
 
-            const messageStr = messages.map((message: IMessage) => {
+            const messageStrs = messages.map((message: IMessage) => {
                 return Buffer.from(JSON.stringify({
-                    to: message.to,
-                    from: message.from,
+                    sender: message.sender,
                     message: message.message,
                     timestamp: message.timestamp
                 })).toString('base64');;
             });
 
-            res.status(200).json(messages);
+            res.status(200).json(messageStrs);
         } catch (error: any) {
             logger.error(`Error getting messages: ${error.message}`);
             res.status(500).json({ error: 'Internal Server Error' });
@@ -69,8 +68,8 @@ class MessageController {
             const key = MessageController.getKey(to, from);
 
             const newMessage = {
-                to,
-                from,
+                key,
+                sender: from,
                 message,
                 timestamp: new Date()
             };

@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { IUser } from '../models/userModel';
+import { IPublicUser, IUser } from '../models/userModel';
 import mongoClient from '../utils/db';
 import { logger } from '../utils/logger';
-import AuthController from './authController';
-import ChatController from './chatController';
 import cloudinary from 'cloudinary';
 import fs from 'fs';
+import MessageController from './messageController';
+import db from '../utils/db';
+import { IMessage } from '../models/messageModel';
 
 
 class UserController {
@@ -181,12 +182,23 @@ class UserController {
       const { query } = req.query;
       const users: IUser[] | null = await mongoClient.findUsers(query ? { username: { $regex: query, $options: 'i' } } : {});
 
-      // remove me
       const userId = res.locals.userId;
 
-      const usersData = users?.filter(
-        user => user.id.toString() !== userId
-      )
+      const usersData: IPublicUser[] = []
+
+      for (const user of users || []) {
+        if (user.id === userId) {
+          continue;
+        }
+        usersData.push({
+          _id: user._id,
+          username: user.username,
+          phone: user.phone || '',
+          profilePicture: user.profilePicture || '',
+          bio: user.bio || '',
+          lastMessage: await db.findLastMessage({ key: MessageController.getKey(userId, user._id as string) }) || undefined
+        });
+      }
 
       res.status(200).json(usersData);
     } catch (error: any) {
