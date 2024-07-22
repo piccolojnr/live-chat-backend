@@ -22,7 +22,7 @@ class MessageController {
             }
 
             const key = MessageController.getKey(userId1, userId2);
-            let messages = await redisClient.getMessagesFromCache(key, 0, -1);
+            let messages: any = await redisClient.getMessagesFromCache(key, 0, -1);
 
             if (messages && messages.length > 0) {
                 res.status(200).json(messages);
@@ -30,10 +30,6 @@ class MessageController {
             }
 
             messages = await db.findMessages({ key }) || [];
-
-            // messages.forEach((message: IMessage) => {
-            //     message.message = Buffer.from(message.message, 'base64').toString('utf-8');
-            // });
 
             if (messages.length > 0) {
                 await redisClient.saveMessagesToCache(key, messages);

@@ -90,7 +90,8 @@ class RedisClient {
 
     async getMessagesFromCache(key: string, start: number, end: number) {
         const cachedMessages = await this.client.lrange(key, start, end);
-        return cachedMessages.map((message: string) => JSON.parse(Buffer.from(message, 'base64').toString('ascii'))).reverse();
+        // return cachedMessages.map((message: string) => JSON.parse(Buffer.from(message, 'base64').toString('ascii'))).reverse();
+        return cachedMessages;
     }
 
     async addMessageToCache(key: string, message: IPublicMessage) {
