@@ -1,8 +1,7 @@
 import mongoose, { Model, Mongoose } from "mongoose";
-import { IChat, IMessage } from "../models/chatModel";
 import { IUser } from "../models/userModel";
 import User from "../models/userModel";
-import Chat from "../models/chatModel";
+import Message, { IMessage, IPublicMessage } from "../models/messageModel";
 
 
 
@@ -11,7 +10,7 @@ class MongoClient {
   private static instance: MongoClient;
   private client: Mongoose;
   private userModel: Model<IUser> = User;
-  private chatModel: Model<IChat> = Chat;
+  private messageModel: Model<IMessage> = Message;
 
   private constructor() {
     this.client = mongoose;
@@ -42,13 +41,10 @@ class MongoClient {
     return this.client;
   }
 
+  // ----------------- User Functions -----------------
+
   public async createUser(user: IUser): Promise<IUser> {
     return await this.userModel.create(user);
-  }
-
-  public async createChat(chat: IChat): Promise<IChat> {
-    return await this.chatModel.create(chat);
-
   }
 
   public async findUser(query: any): Promise<IUser | null> {
@@ -61,97 +57,48 @@ class MongoClient {
       .select("-password")
       .exec();
   }
-  public async findChat(query: any): Promise<IChat | null> {
-    return await this.chatModel.findOne(query)
-      .populate(
-        {
-          path: 'participants',
-          select: 'username profilePicture'
-        }
-      )
-      .select("-messages")
-      .exec();
-  }
 
-  public async findChatMessages(query: any): Promise<IChat | null> {
-    return await this.chatModel.findOne(query).populate({
-      path: 'messages.sender',
-      select: 'username profilePicture'
-    }).exec();
-  }
-
-
-
-
-  public async findChats(query: any): Promise<IChat[] | null> {
-    return await this.chatModel.find(query)
-      .populate(
-        {
-          path: 'participants',
-          select: 'username profilePicture'
-        }
-      )
-      .select("-messages")
-      .exec()
-  }
-  public async addMessageToChat(chatId: string, message: IMessage) {
-    const updateResult = await this.chatModel.findByIdAndUpdate(
-      chatId,
-      {
-        $push: { messages: message },
-        $set: { lastMessage: message }
-      },
-      { new: true, useFindAndModify: false }
-    );
-    return updateResult;
-  }
-
-  public async getChatLastMessage(chatId: string): Promise<IMessage | null> {
-    const chat = await this.chatModel.findOne({ _id: chatId })
-      .populate({
-        path: 'lastMessage.sender',
-        select: 'username profilePicture'
-      })
-      .select('-messages')
-      .exec();
-
-    return chat?.lastMessage || null;
-  }
-
-  public async getMessagesFromChat(chatId: string, skip: number, limit: number) {
-    return this.chatModel.findById(chatId, {
-      messages: { $slice: [skip, limit] }
-    }).select('messages').
-      populate({
-        path: 'messages.sender',
-        select: 'username profilePicture'
-      }).exec();
-  }
-
-
-  public async updateChat(query: any, update: any): Promise<void> {
-    await this.chatModel.updateOne(query, update)
-      .select("-messages")
-      .exec();
-  }
 
   public async updateUser(query: any, update: any): Promise<void> {
     await this.userModel.updateOne(query, update)
       .exec();
   }
 
-  public async deleteChat(query: any): Promise<void> {
-    await this.chatModel.deleteOne(query).exec();
-  }
-
-  public async deleteChats(query: any): Promise<void> {
-    await this.chatModel.deleteMany(query).exec();
-  }
-
   public async deleteUser(query: any): Promise<void> {
     await this.userModel.deleteOne
       (query).exec();
   }
+
+
+  // ----------------- Message Functions -----------------
+
+  public async createMessage(message: IPublicMessage): Promise<IMessage> {
+    return await this.messageModel.create(message);
+  }
+
+  public async findMessages(query: any): Promise<IMessage[] | null> {
+    return await this.messageModel.find(query)
+      .sort({ timestamp: -1 })
+      .exec();
+  }
+
+  public async findLastMessage(query: any): Promise<IMessage | null> {
+    return await this.messageModel.findOne(query)
+      .sort({ timestamp: -1 })
+      .exec();
+  }
+
+  public async deleteMessages(query: any): Promise<void> {
+    await this.messageModel.deleteMany(query)
+      .exec();
+  }
+
+  public async deleteMessage(query: any): Promise<void> {
+    await this.messageModel.deleteOne(query)
+      .exec();
+  }
+
+
 }
 
 export default MongoClient.getInstance();

@@ -10,6 +10,7 @@ const fileUploadService = new FileUploadService();
 
 router.post("/", UserController.createUser);
 router.get("/:username/users", AuthController.checkAuthMiddleware, UserController.getUserByUsername);
+router.get("/:id/user", AuthController.checkAuthMiddleware, UserController.getUserById);
 router.get("/", AuthController.checkAuthMiddleware, UserController.getUsers);
 router.get("/me", AuthController.checkAuthMiddleware, UserController.getUser);
 router.post("/update-profile", AuthController.checkAuthMiddleware, fileUploadService.getMulterMiddleware(), UserController.updateUser);
